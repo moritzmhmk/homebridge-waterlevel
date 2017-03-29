@@ -1,0 +1,34 @@
+{
+  "name": "homebridge-waterlevel",
+  "version": "0.0.1",
+  "description": "Leak sensor for waterlevel advertised via BLE",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moritzmhmk/homebridge-waterlevel.git"
+  },
+  "keywords": [
+    "waterlevel",
+    "ble",
+    "noble",
+    "leak",
+    "homekit",
+    "homebridge",
+    "homebridge-plugin"
+  ],
+  "author": "Moritz K.",
+  "engines": {
+    "homebridge": ">=0.2.0"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/moritzmhmk/homebridge-waterlevel/issues"
+  },
+  "homepage": "https://github.com/moritzmhmk/homebridge-waterlevel#readme",
+  "dependencies": {
+    "noble": "^1.8.0"
+  }
+}
