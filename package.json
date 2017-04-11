@@ -1,6 +1,6 @@
 {
   "name": "homebridge-waterlevel",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Leak sensor for waterlevel advertised via BLE",
   "main": "index.js",
   "scripts": {

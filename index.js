@@ -11,12 +11,16 @@ module.exports = function (homebridge) {
 class WaterLevel {
   constructor (log, config) {
     if (config.name === undefined) { return log('Name missing from configuration.') }
+    if (config.deviceName === undefined) { return log('Device name missing from configuration.') }
 
-    this.batteryVoltageMin = config.batteryVoltageMin === undefined ? 1800 : config.name
-    this.batteryVoltageMax = config.batteryVoltageMax === undefined ? 3200 : config.name
-    this.batteryVoltageLow = config.batteryVoltageLow === undefined ? 2000 : config.name
-    this.distanceThreshold = config.distanceThreshold === undefined ? 15 : config.name
-    this.maxUpdateInterval = config.maxUpdateInterval === undefined ? 30 * 60 * 1000 : config.name
+    this.name = config.name
+    this.deviceName = config.deviceName
+    this.batteryVoltageMin = config.batteryVoltageMin === undefined ? 1800 : config.batteryVoltageMin
+    this.batteryVoltageMax = config.batteryVoltageMax === undefined ? 3200 : config.batteryVoltageMax
+    this.batteryVoltageLow = config.batteryVoltageLow === undefined ? 2000 : config.batteryVoltageLow
+    this.distanceThreshold = config.distanceThreshold === undefined ? 15 : config.distanceThreshold
+    this.distanceDebounce = config.distanceDebounce === undefined ? 1 : config.distanceDebounce
+    this.maxUpdateInterval = config.maxUpdateInterval === undefined ? 30 * 60 * 1000 : config.maxUpdateInterval
 
     this.informationService = new Service.AccessoryInformation()
     this.informationService
@@ -25,7 +29,7 @@ class WaterLevel {
       .setCharacteristic(Characteristic.Model, 'v0.0.1')
       .setCharacteristic(Characteristic.SerialNumber, '0000000001')
 
-    this.leakSensorService = new Service.LeakSensor(config.name)
+    this.leakSensorService = new Service.LeakSensor(this.name)
 
     let setupGetListener = (characteristic) => {
       characteristic.on('get', (callback) => {
@@ -46,7 +50,7 @@ class WaterLevel {
       callback(null, Date.now() - this.lastUpdate >= this.maxUpdateInterval)
     })
 
-    this.batteryService = new Service.BatteryService(config.name)
+    this.batteryService = new Service.BatteryService(this.name)
     setupGetListener(this.batteryService.getCharacteristic(Characteristic.BatteryLevel))
     setupGetListener(this.batteryService.getCharacteristic(Characteristic.StatusLowBattery))
 
@@ -60,17 +64,24 @@ class WaterLevel {
     })
 
     noble.on('discover', (peripheral) => {
-      if (peripheral.advertisement.localName !== 'wtrlvl') {
-        return
+      if (peripheral.advertisement.localName === this.deviceName) {
+        var manufacturerData = peripheral.advertisement.manufacturerData
+        let batteryVoltage = manufacturerData.readUInt16LE(2)
+        let distance = manufacturerData.readUInt8(4)
+        this.lastUpdate = Date.now()
+
+        let detected = this.leakSensorService.getCharacteristic(Characteristic.LeakDetected).value
+        if (detected && distance > this.distanceThreshold + this.distanceDebounce) { detected = false }
+        if (!detected && distance < this.distanceThreshold) { detected = true }
+        let batteryLevel = percent(batteryVoltage, this.batteryVoltageMin, this.batteryVoltageMax)
+        let batteryLow = batteryVoltage < this.batteryVoltageLow
+
+        log(`received: ${batteryVoltage}mV (${batteryLevel.toFixed(2)}%, low:${batteryLow}) ${distance}cm (leak:${detected})`)
+
+        this.leakSensorService.setCharacteristic(Characteristic.LeakDetected, detected)
+        this.batteryService.setCharacteristic(Characteristic.BatteryLevel, batteryLevel)
+        this.batteryService.setCharacteristic(Characteristic.StatusLowBattery, batteryLow)
       }
-      var manufacturerData = peripheral.advertisement.manufacturerData
-      let batteryVoltage = manufacturerData.readUInt16LE(2)
-      let distance = manufacturerData.readUInt8(4)
-      this.lastUpdate = Date.now()
-      log('received:', batteryVoltage + 'mV', distance + 'cm')
-      this.leakSensorService.setCharacteristic(Characteristic.LeakDetected, distance < this.distanceThreshold)
-      this.batteryService.setCharacteristic(Characteristic.BatteryLevel, batteryLevel(batteryVoltage, this.batteryVoltageMin, this.batteryVoltageMax))
-      this.batteryService.setCharacteristic(Characteristic.StatusLowBattery, batteryVoltage < this.batteryVoltageLow)
     })
   }
   getServices () {
@@ -78,4 +89,4 @@ class WaterLevel {
   }
 }
 
-let batteryLevel = (v, min, max) => Math.min(100, Math.max(0, (v - min) / (max - min) * 100))
+let percent = (v, min, max) => Math.min(100, Math.max(0, (v - min) / (max - min) * 100))
