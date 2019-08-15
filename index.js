@@ -43,6 +43,7 @@ class WaterLevel {
     }
 
     setupGetListener(this.leakSensorService.getCharacteristic(Characteristic.LeakDetected))
+    setupGetListener(this.leakSensorService.getCharacteristic(Characteristic.WaterLevel))
     this.leakSensorService.getCharacteristic(Characteristic.StatusActive).on('get', (callback) => {
       callback(null, Date.now() - this.lastUpdate < this.maxUpdateInterval)
     })
@@ -73,12 +74,16 @@ class WaterLevel {
         let detected = this.leakSensorService.getCharacteristic(Characteristic.LeakDetected).value
         if (detected && distance > this.distanceThreshold + this.distanceDebounce) { detected = false }
         if (!detected && distance < this.distanceThreshold) { detected = true }
+
+        let level = percent(distance, 25, this.distanceThreshold)
+
         let batteryLevel = percent(batteryVoltage, this.batteryVoltageMin, this.batteryVoltageMax)
         let batteryLow = batteryVoltage < this.batteryVoltageLow
 
         log(`received: ${batteryVoltage}mV (${batteryLevel.toFixed(2)}%, low:${batteryLow}) ${distance}cm (leak:${detected})`)
 
         this.leakSensorService.setCharacteristic(Characteristic.LeakDetected, detected)
+        this.leakSensorService.setCharacteristic(Characteristic.WaterLevel, level)
         this.batteryService.setCharacteristic(Characteristic.BatteryLevel, batteryLevel)
         this.batteryService.setCharacteristic(Characteristic.StatusLowBattery, batteryLow)
       }
