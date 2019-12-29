@@ -1,6 +1,6 @@
 {
   "name": "homebridge-waterlevel",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Leak sensor for waterlevel advertised via BLE",
   "main": "index.js",
   "scripts": {
@@ -29,6 +29,6 @@
   },
   "homepage": "https://github.com/moritzmhmk/homebridge-waterlevel#readme",
   "dependencies": {
-    "noble": "^1.8.0"
+    "@abandonware/noble": "^1.9.2-5"
   }
 }
